@@ -96,13 +96,13 @@ class HomeScreen extends StatelessWidget {
         // Header with Shapes and Verifiers
         Row(
           children: [
-            // Guesses Headers
+                    // Guesses Headers
             Expanded(flex: 3, child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: const [
-                Padding(padding: EdgeInsets.all(4), child: Icon(Icons.change_history, color: Colors.blue, size: 20)), 
-                Padding(padding: EdgeInsets.all(4), child: Icon(Icons.crop_square, color: Colors.orange, size: 20)),
-                Padding(padding: EdgeInsets.all(4), child: Icon(Icons.circle, color: Colors.purple, size: 20)),
+                Padding(padding: EdgeInsets.all(4), child: RotatedBox(quarterTurns: 3, child: Icon(Icons.play_arrow, color: Color(0xFF00AACC), size: 30))), 
+                Padding(padding: EdgeInsets.all(4), child: Icon(Icons.square, color: Color(0xFFE8C502), size: 20)),
+                Padding(padding: EdgeInsets.all(4), child: Icon(Icons.circle, color: Color(0xFF6E50AA), size: 20)), 
               ],
             )),
             const SizedBox(width: 8),
@@ -125,11 +125,11 @@ class HomeScreen extends StatelessWidget {
                 // Guesses
                 Expanded(flex: 3, child: Row(
                   children: [
-                    Expanded(child: _buildCompactSelector(context, state.guesses[row][0], (v) => state.setGuess(row, 0, v), Colors.blue[50]!)),
+                    Expanded(child: _buildCompactSelector(context, state.guesses[row][0], (v) => state.setGuess(row, 0, v), const Color(0xFF00AACC).withOpacity(0.3))),
                     const SizedBox(width: 4),
-                    Expanded(child: _buildCompactSelector(context, state.guesses[row][1], (v) => state.setGuess(row, 1, v), Colors.amber[50]!)),
+                    Expanded(child: _buildCompactSelector(context, state.guesses[row][1], (v) => state.setGuess(row, 1, v), const Color(0xFFE8C502).withOpacity(0.3))),
                     const SizedBox(width: 4),
-                    Expanded(child: _buildCompactSelector(context, state.guesses[row][2], (v) => state.setGuess(row, 2, v), Colors.purple[50]!)),
+                    Expanded(child: _buildCompactSelector(context, state.guesses[row][2], (v) => state.setGuess(row, 2, v), const Color(0xFF6E50AA).withOpacity(0.3))),
                   ],
                 )),
                 const SizedBox(width: 8),
@@ -214,9 +214,9 @@ class HomeScreen extends StatelessWidget {
         // Headers for Grid
         Row(
           children: const [
-             Expanded(child: Center(child: Icon(Icons.change_history, color: Colors.blue))), // Triangle
-             Expanded(child: Center(child: Icon(Icons.crop_square, color: Colors.orange))), // Square (Yellow)
-             Expanded(child: Center(child: Icon(Icons.circle, color: Colors.purple))), // Circle
+             Expanded(child: Center(child: RotatedBox(quarterTurns: 3, child: Icon(Icons.play_arrow, color: Color(0xFF00AACC), size: 30)))), // Blue Triangle
+             Expanded(child: Center(child: Icon(Icons.square, color: Color(0xFFE8C502)))), // Yellow Square
+             Expanded(child: Center(child: Icon(Icons.circle, color: Color(0xFF6E50AA)))), // Purple Circle
           ],
         ),
         const SizedBox(height: 8),
@@ -266,31 +266,54 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildNotes(BuildContext context) {
     final state = context.watch<GameState>();
-    // We use a TextEditingController in a StatefulWidget usually, 
-    // but for simple state syncing in this stateless widget we rely on onChanged.
-    // However, recreating the controller every build is bad.
-    // Let's just use the state value.
-    // Ideally this widget should be its own stateful widget to handle focus/controller properly.
-    // For MVP, we'll just display it.
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Notes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const Text('Verifier Notes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Container(
-          height: 150,
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: TextFormField(
-            initialValue: state.notes,
-            maxLines: null,
-            decoration: const InputDecoration.collapsed(hintText: 'Enter your deductions here...'),
-            onChanged: (val) => state.updateNotes(val),
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Determine columns based on width
+            int crossAxisCount = 3; // Desktop: 3 cols (A,B,C / D,E,F)
+            if (constraints.maxWidth < 600) crossAxisCount = 2; // Mobile: 2 cols
+            if (constraints.maxWidth < 400) crossAxisCount = 1; // Very small: 1 col
+
+            // Calculate width for each item
+            double itemWidth = (constraints.maxWidth - ((crossAxisCount - 1) * 8)) / crossAxisCount;
+
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: ['A', 'B', 'C', 'D', 'E', 'F'].map((id) {
+                return SizedBox(
+                  width: itemWidth,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Verifier $id', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        const SizedBox(height: 4),
+                        TextFormField(
+                          initialValue: state.verifierNotes[id],
+                          maxLines: 3,
+                          minLines: 3,
+                          decoration: const InputDecoration.collapsed(hintText: 'Notes...'),
+                          style: const TextStyle(fontSize: 13),
+                          onChanged: (val) => state.updateVerifierNote(id, val),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            );
+          },
         ),
       ],
     );

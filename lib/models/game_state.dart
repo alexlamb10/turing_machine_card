@@ -64,10 +64,15 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Notes
-  String notes = "";
-  void updateNotes(String val) {
-    notes = val;
+  // Notes per Verifier (A-F)
+  final Map<String, String> _verifierNotes = {
+    'A': '', 'B': '', 'C': '', 'D': '', 'E': '', 'F': ''
+  };
+  
+  Map<String, String> get verifierNotes => _verifierNotes;
+
+  void updateVerifierNote(String id, String val) {
+    _verifierNotes[id] = val;
     notifyListeners();
   }
   
@@ -87,7 +92,7 @@ class GameState extends ChangeNotifier {
       row[1] = null;
       row[2] = null;
     }
-    notes = "";
+    _verifierNotes.updateAll((key, value) => '');
     notifyListeners();
   }
 }

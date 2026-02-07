@@ -17,23 +17,17 @@ class GridCell extends StatelessWidget {
     required this.onLongPress,
   });
 
-  Color get _color {
+  Color get _baseColor {
     switch (column) {
-      case 0: return Colors.blue[100]!;
-      case 1: return Colors.amber[100]!; // Yellow
-      case 2: return Colors.purple[100]!;
-      default: return Colors.grey[200]!;
-    }
-  }
-
-  Color get _borderColor {
-    switch (column) {
-      case 0: return Colors.blue;
-      case 1: return Colors.orange; // Yellow acts weird on white
-      case 2: return Colors.purple;
+      case 0: return const Color(0xFF00AACC); // Blue
+      case 1: return const Color(0xFFE8C502); // Yellow
+      case 2: return const Color(0xFF6E50AA); // Purple
       default: return Colors.grey;
     }
   }
+
+  Color get _color => _baseColor.withOpacity(0.3);
+  Color get _borderColor => _baseColor;
 
   @override
   Widget build(BuildContext context) {
