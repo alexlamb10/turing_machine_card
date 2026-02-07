@@ -46,26 +46,37 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           children: [
             // Top Section: Inputs (Left) vs Verifiers+Grid (Right)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left: Guess Inputs
-                Expanded(
-                  flex: 3,
-                  child: _buildGuessInputs(context),
-                ),
-                const SizedBox(width: 16),
-                // Right: Grid
-                Expanded(
-                  flex: 2,
-                  child: Column(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 600) {
+                  // Desktop / Tablet: Side-by-side
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Removed separate verifiers section
-                      _buildGrid(context),
+                      // Left: Guess Inputs
+                      Expanded(
+                        flex: 3,
+                        child: _buildGuessInputs(context),
+                      ),
+                      const SizedBox(width: 16),
+                      // Right: Grid
+                      Expanded(
+                        flex: 2,
+                        child: _buildGridSection(context),
+                      ),
                     ],
-                  ),
-                ),
-              ],
+                  );
+                } else {
+                  // Mobile: Stacked
+                  return Column(
+                    children: [
+                      _buildGuessInputs(context),
+                      const SizedBox(height: 24),
+                      _buildGridSection(context),
+                    ],
+                  );
+                }
+              },
             ),
             const SizedBox(height: 24),
             // Bottom: Notes
@@ -195,6 +206,24 @@ class HomeScreen extends StatelessWidget {
   }
 
 
+
+
+  Widget _buildGridSection(BuildContext context) {
+    return Column(
+      children: [
+        // Headers for Grid
+        Row(
+          children: const [
+             Expanded(child: Center(child: Icon(Icons.change_history, color: Colors.blue))), // Triangle
+             Expanded(child: Center(child: Icon(Icons.crop_square, color: Colors.orange))), // Square (Yellow)
+             Expanded(child: Center(child: Icon(Icons.circle, color: Colors.purple))), // Circle
+          ],
+        ),
+        const SizedBox(height: 8),
+        _buildGrid(context),
+      ],
+    );
+  }
 
   Widget _buildGrid(BuildContext context) {
     final state = context.watch<GameState>();
