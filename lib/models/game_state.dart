@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum CellState { unknown, crossed, circled }
 
@@ -12,6 +14,10 @@ class GameState extends ChangeNotifier {
 
   List<List<CellState>> get grid => _grid;
 
+  GameState() {
+    _loadState();
+  }
+
   void toggleCell(int col, int number) {
     if (_grid[col][number - 1] == CellState.unknown) {
       _grid[col][number - 1] = CellState.crossed;
@@ -21,6 +27,7 @@ class GameState extends ChangeNotifier {
       // If it was circled, uncircle it to unknown
       _grid[col][number - 1] = CellState.unknown; 
     }
+    _saveState();
     notifyListeners();
   }
 
@@ -32,6 +39,7 @@ class GameState extends ChangeNotifier {
       // Optionally cross out others in same column? 
       // For now let's keep it manual as users might want full control.
     }
+    _saveState();
     notifyListeners();
   }
   
@@ -47,6 +55,7 @@ class GameState extends ChangeNotifier {
   void cycleRoundVerifier(int row, String id) {
     int current = _roundVerifiers[row][id] ?? 0;
     _roundVerifiers[row][id] = (current + 1) % 3;
+    _saveState();
     notifyListeners();
   }
 
@@ -61,6 +70,7 @@ class GameState extends ChangeNotifier {
 
   void setGuess(int row, int col, int? val) {
     _guesses[row][col] = val;
+    _saveState();
     notifyListeners();
   }
 
@@ -73,6 +83,7 @@ class GameState extends ChangeNotifier {
 
   void updateVerifierNote(String id, String val) {
     _verifierNotes[id] = val;
+    _saveState();
     notifyListeners();
   }
   
@@ -87,6 +98,7 @@ class GameState extends ChangeNotifier {
     } else {
       _disabledVerifiers.add(id);
     }
+    _saveState();
     notifyListeners();
   }
 
@@ -108,6 +120,83 @@ class GameState extends ChangeNotifier {
     }
     _verifierNotes.updateAll((key, value) => '');
     _disabledVerifiers.clear();
+    _saveState();
     notifyListeners();
+  }
+
+  // Persistence Logic
+  static const _storageKey = 'turing_machine_game_state';
+
+  Future<void> _saveState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = {
+      'grid': _grid.map((col) => col.map((cell) => cell.index).toList()).toList(),
+      'roundVerifiers': _roundVerifiers,
+      'guesses': _guesses,
+      'verifierNotes': _verifierNotes,
+      'disabledVerifiers': _disabledVerifiers.toList(),
+    };
+    await prefs.setString(_storageKey, jsonEncode(data));
+  }
+
+  Future<void> _loadState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_storageKey);
+    if (jsonString == null) return;
+
+    try {
+      final data = jsonDecode(jsonString) as Map<String, dynamic>;
+
+      // Load Grid
+      if (data.containsKey('grid')) {
+        final gridData = (data['grid'] as List).map((col) => (col as List).cast<int>()).toList();
+        for (int i = 0; i < 3; i++) {
+          for (int j = 0; j < 5; j++) {
+            if (i < gridData.length && j < gridData[i].length) {
+              _grid[i][j] = CellState.values[gridData[i][j]];
+            }
+          }
+        }
+      }
+
+      // Load Round Verifiers
+      if (data.containsKey('roundVerifiers')) {
+        final rvData = (data['roundVerifiers'] as List).cast<Map<String, dynamic>>();
+        for (int i = 0; i < 9; i++) {
+          if (i < rvData.length) {
+             _roundVerifiers[i] = rvData[i].map((key, value) => MapEntry(key, value as int));
+          }
+        }
+      }
+
+      // Load Guesses
+      if (data.containsKey('guesses')) {
+        final guessesData = (data['guesses'] as List).map((row) => (row as List).cast<int?>()).toList();
+        for (int i = 0; i < 9; i++) {
+          if (i < guessesData.length) {
+            _guesses[i] = guessesData[i];
+          }
+        }
+      }
+
+      // Load Notes
+      if (data.containsKey('verifierNotes')) {
+        final notesData = Map<String, String>.from(data['verifierNotes']);
+        _verifierNotes.addAll(notesData);
+      }
+
+      // Load Disabled Verifiers
+      if (data.containsKey('disabledVerifiers')) {
+        final disabledData = (data['disabledVerifiers'] as List).cast<String>();
+        _disabledVerifiers.clear();
+        _disabledVerifiers.addAll(disabledData);
+      }
+
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading game state: $e');
+      }
+    }
   }
 }

@@ -1,29 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'models/game_state.dart';
-import 'screens/home_screen.dart';
+import 'models/stats_state.dart';
+import 'screens/landing_screen.dart';
 
 void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => GameState(),
-      child: const TuringMachineApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
-class TuringMachineApp extends StatelessWidget {
-  const TuringMachineApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Turing Machine Card',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => GameState()),
+        ChangeNotifierProvider(create: (_) => StatsState()),
+      ],
+      child: MaterialApp(
+        title: 'Turing Machine Card',
+        theme: ThemeData(
+          primarySwatch: Colors.blueGrey,
+          useMaterial3: true,
+        ),
+        home: const LandingScreen(),
+        debugShowCheckedModeBanner: false,
       ),
-      home: const HomeScreen(),
     );
   }
 }

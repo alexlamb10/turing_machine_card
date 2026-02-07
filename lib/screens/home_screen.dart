@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/game_state.dart';
+import '../models/stats_state.dart';
 import '../widgets/grid_cell.dart';
 import '../widgets/verifier_input.dart';
 
@@ -13,6 +14,10 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Turing Machine Note Card'),
         actions: [
+          TextButton(
+            onPressed: () => _showFinishedDialog(context, context.read<GameState>()),
+            child: const Text('Finished', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -346,6 +351,38 @@ class HomeScreen extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+  void _showFinishedDialog(BuildContext context, GameState state) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Game Finished'),
+        content: const Text('Did you beat the machine?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              // Loss
+              context.read<StatsState>().addLoss();
+              state.reset();
+              Navigator.pop(ctx); // Close dialog
+              Navigator.pop(context); // Go back to Landing
+            },
+            child: const Text('No (Loss)', style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Win
+              context.read<StatsState>().addWin();
+              state.reset();
+              Navigator.pop(ctx);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Yes (Win!)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 }
