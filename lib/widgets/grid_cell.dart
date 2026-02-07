@@ -53,12 +53,16 @@ class GridCell extends StatelessWidget {
               ),
             ),
             if (state == CellState.crossed)
-              const Icon(Icons.close, color: Colors.red, size: 28),
+              const Positioned.fill(
+                child: Center(child: Icon(Icons.close, color: Colors.red, size: 28)),
+              ),
             if (state == CellState.circled)
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.green, width: 3),
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.green, width: 3),
+                  ),
                 ),
               ),
           ],

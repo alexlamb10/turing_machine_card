@@ -76,6 +76,20 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
   
+  // Disabled Verifiers (e.g. E/F not in use)
+  final Set<String> _disabledVerifiers = {};
+
+  bool isVerifierDisabled(String id) => _disabledVerifiers.contains(id);
+
+  void toggleVerifierDisabled(String id) {
+    if (_disabledVerifiers.contains(id)) {
+      _disabledVerifiers.remove(id);
+    } else {
+      _disabledVerifiers.add(id);
+    }
+    notifyListeners();
+  }
+
   void reset() {
     for (var col in _grid) {
       for (var i = 0; i < 5; i++) {
@@ -93,6 +107,7 @@ class GameState extends ChangeNotifier {
       row[2] = null;
     }
     _verifierNotes.updateAll((key, value) => '');
+    _disabledVerifiers.clear();
     notifyListeners();
   }
 }

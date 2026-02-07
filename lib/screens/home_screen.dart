@@ -109,9 +109,20 @@ class HomeScreen extends StatelessWidget {
             // Verifiers Headers (A-F)
             Expanded(flex: 4, child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: ['A', 'B', 'C', 'D', 'E', 'F'].map((id) => 
-                Text(id, style: const TextStyle(fontWeight: FontWeight.bold))
-              ).toList(),
+              children: ['A', 'B', 'C', 'D', 'E', 'F'].map((id) {
+                final isDisabled = state.isVerifierDisabled(id);
+                return GestureDetector(
+                  onTap: () => state.toggleVerifierDisabled(id),
+                  child: Text(
+                    id, 
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDisabled ? Colors.grey : Colors.black,
+                      decoration: isDisabled ? TextDecoration.lineThrough : null,
+                    )
+                  ),
+                );
+              }).toList(),
             )),
           ],
         ),
@@ -137,9 +148,10 @@ class HomeScreen extends StatelessWidget {
                 Expanded(flex: 4, child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: ['A', 'B', 'C', 'D', 'E', 'F'].map((id) {
+                     final isDisabled = state.isVerifierDisabled(id);
                      return GestureDetector(
-                       onTap: () => state.cycleRoundVerifier(row, id),
-                       child: _buildCompactVerifier(state.roundVerifiers[row][id] ?? 0),
+                       onTap: isDisabled ? null : () => state.cycleRoundVerifier(row, id),
+                       child: _buildCompactVerifier(state.roundVerifiers[row][id] ?? 0, disabled: isDisabled),
                      );
                   }).toList(),
                 )),
@@ -176,8 +188,26 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCompactVerifier(int state) {
-     Color bgColor = Colors.grey[200]!;
+  Widget _buildCompactVerifier(int state, {bool disabled = false}) {
+    if (disabled) {
+      return Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Center(
+          child: Container(
+            height: 1,
+            width: 20,
+            color: Colors.grey[600],
+          ),
+        ),
+      );
+    }
+
+    Color bgColor = Colors.grey[200]!;
     IconData? icon;
     Color iconColor = Colors.transparent;
 
