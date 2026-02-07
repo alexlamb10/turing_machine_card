@@ -48,15 +48,17 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Guesses
-  int? blueGuess;
-  int? yellowGuess;
-  int? purpleGuess;
+  // Guesses: 9 Rows, 3 Columns (Blue, Yellow, Purple)
+  // [Row 0-8][Col 0-2]
+  final List<List<int?>> _guesses = List.generate(
+    9,
+    (_) => [null, null, null],
+  );
 
-  void setGuess(int col, int? val) {
-    if (col == 0) blueGuess = val;
-    if (col == 1) yellowGuess = val;
-    if (col == 2) purpleGuess = val;
+  List<List<int?>> get guesses => _guesses;
+
+  void setGuess(int row, int col, int? val) {
+    _guesses[row][col] = val;
     notifyListeners();
   }
 
@@ -74,9 +76,12 @@ class GameState extends ChangeNotifier {
       }
     }
     _verifierStates.updateAll((key, value) => 0);
-    blueGuess = null;
-    yellowGuess = null;
-    purpleGuess = null;
+    // Reset guesses
+    for (var row in _guesses) {
+      row[0] = null;
+      row[1] = null;
+      row[2] = null;
+    }
     notes = "";
     notifyListeners();
   }

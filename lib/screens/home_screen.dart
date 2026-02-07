@@ -83,55 +83,53 @@ class HomeScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Current Round Guess', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        _buildNumberSelector(
-          context, 
-          label: 'Blue', 
-          color: Colors.blue[100]!, 
-          value: state.blueGuess, 
-          onChanged: (val) => state.setGuess(0, val),
+        // Header with Shapes
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.change_history, color: Colors.blue)), // Triangle
+            const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.crop_square, color: Colors.orange)), // Square (Yellow)
+            const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.circle, color: Colors.purple)), // Circle
+          ],
         ),
         const SizedBox(height: 8),
-        _buildNumberSelector(
-          context, 
-          label: 'Yellow', 
-          color: Colors.amber[100]!, 
-          value: state.yellowGuess, 
-          onChanged: (val) => state.setGuess(1, val),
-        ),
-        const SizedBox(height: 8),
-        _buildNumberSelector(
-          context, 
-          label: 'Purple', 
-          color: Colors.purple[100]!, 
-          value: state.purpleGuess, 
-          onChanged: (val) => state.setGuess(2, val),
-        ),
+        // 9 Rows of Inputs
+        ...List.generate(9, (row) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2.0),
+            child: Row(
+              children: [
+                Expanded(child: _buildCompactSelector(context, state.guesses[row][0], (v) => state.setGuess(row, 0, v), Colors.blue[50]!)),
+                const SizedBox(width: 4),
+                Expanded(child: _buildCompactSelector(context, state.guesses[row][1], (v) => state.setGuess(row, 1, v), Colors.amber[50]!)),
+                const SizedBox(width: 4),
+                Expanded(child: _buildCompactSelector(context, state.guesses[row][2], (v) => state.setGuess(row, 2, v), Colors.purple[50]!)),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }
 
-  Widget _buildNumberSelector(BuildContext context, {
-    required String label, 
-    required Color color, 
-    required int? value, 
-    required Function(int?) onChanged
-  }) {
+  Widget _buildCompactSelector(BuildContext context, int? value, Function(int?) onChanged, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int>(
           value: value,
-          hint: Text(label),
           isExpanded: true,
+          iconSize: 16,
+          style: const TextStyle(fontSize: 14, color: Colors.black),
           items: [1, 2, 3, 4, 5].map((e) => DropdownMenuItem(
             value: e,
-            child: Text(e.toString()),
+            child: Center(child: Text(e.toString())),
           )).toList(),
           onChanged: onChanged,
         ),
