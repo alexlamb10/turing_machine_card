@@ -35,16 +35,18 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
   
-  // Verifier States
-  // A-F. 0=Empty, 1=Cross(Fail), 2=Check(Pass)
-  final Map<String, int> _verifierStates = {
-    'A': 0, 'B': 0, 'C': 0, 'D': 0, 'E': 0, 'F': 0
-  };
+  // Verifier States: 9 Rows, 6 Verifiers (A-F)
+  // [Row 0-8][VerifierID] -> State (0=Empty, 1=Fail, 2=Pass)
+  final List<Map<String, int>> _roundVerifiers = List.generate(
+    9,
+    (_) => {'A': 0, 'B': 0, 'C': 0, 'D': 0, 'E': 0, 'F': 0},
+  );
   
-  Map<String, int> get verifierStates => _verifierStates;
+  List<Map<String, int>> get roundVerifiers => _roundVerifiers;
 
-  void cycleVerifier(String id) {
-    _verifierStates[id] = (_verifierStates[id]! + 1) % 3;
+  void cycleRoundVerifier(int row, String id) {
+    int current = _roundVerifiers[row][id] ?? 0;
+    _roundVerifiers[row][id] = (current + 1) % 3;
     notifyListeners();
   }
 
@@ -75,7 +77,10 @@ class GameState extends ChangeNotifier {
         col[i] = CellState.unknown;
       }
     }
-    _verifierStates.updateAll((key, value) => 0);
+    // Reset verifiers for all rounds
+    for (var row in _roundVerifiers) {
+      row.updateAll((key, value) => 0);
+    }
     // Reset guesses
     for (var row in _guesses) {
       row[0] = null;

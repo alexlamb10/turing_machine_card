@@ -51,17 +51,16 @@ class HomeScreen extends StatelessWidget {
               children: [
                 // Left: Guess Inputs
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: _buildGuessInputs(context),
                 ),
                 const SizedBox(width: 16),
-                // Right: Verifiers & Grid
+                // Right: Grid
                 Expanded(
-                  flex: 3,
+                  flex: 2,
                   child: Column(
                     children: [
-                      _buildVerifiers(context),
-                      const SizedBox(height: 16),
+                      // Removed separate verifiers section
                       _buildGrid(context),
                     ],
                   ),
@@ -83,27 +82,56 @@ class HomeScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Header with Shapes
+        // Header with Shapes and Verifiers
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.change_history, color: Colors.blue)), // Triangle
-            const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.crop_square, color: Colors.orange)), // Square (Yellow)
-            const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.circle, color: Colors.purple)), // Circle
+            // Guesses Headers
+            Expanded(flex: 3, child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: const [
+                Padding(padding: EdgeInsets.all(4), child: Icon(Icons.change_history, color: Colors.blue, size: 20)), 
+                Padding(padding: EdgeInsets.all(4), child: Icon(Icons.crop_square, color: Colors.orange, size: 20)),
+                Padding(padding: EdgeInsets.all(4), child: Icon(Icons.circle, color: Colors.purple, size: 20)),
+              ],
+            )),
+            const SizedBox(width: 8),
+            // Verifiers Headers (A-F)
+            Expanded(flex: 4, child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: ['A', 'B', 'C', 'D', 'E', 'F'].map((id) => 
+                Text(id, style: const TextStyle(fontWeight: FontWeight.bold))
+              ).toList(),
+            )),
           ],
         ),
         const SizedBox(height: 8),
-        // 9 Rows of Inputs
+        // 9 Rows of Inputs + Verifiers
         ...List.generate(9, (row) {
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2.0),
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
             child: Row(
               children: [
-                Expanded(child: _buildCompactSelector(context, state.guesses[row][0], (v) => state.setGuess(row, 0, v), Colors.blue[50]!)),
-                const SizedBox(width: 4),
-                Expanded(child: _buildCompactSelector(context, state.guesses[row][1], (v) => state.setGuess(row, 1, v), Colors.amber[50]!)),
-                const SizedBox(width: 4),
-                Expanded(child: _buildCompactSelector(context, state.guesses[row][2], (v) => state.setGuess(row, 2, v), Colors.purple[50]!)),
+                // Guesses
+                Expanded(flex: 3, child: Row(
+                  children: [
+                    Expanded(child: _buildCompactSelector(context, state.guesses[row][0], (v) => state.setGuess(row, 0, v), Colors.blue[50]!)),
+                    const SizedBox(width: 4),
+                    Expanded(child: _buildCompactSelector(context, state.guesses[row][1], (v) => state.setGuess(row, 1, v), Colors.amber[50]!)),
+                    const SizedBox(width: 4),
+                    Expanded(child: _buildCompactSelector(context, state.guesses[row][2], (v) => state.setGuess(row, 2, v), Colors.purple[50]!)),
+                  ],
+                )),
+                const SizedBox(width: 8),
+                // Verifiers
+                Expanded(flex: 4, child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: ['A', 'B', 'C', 'D', 'E', 'F'].map((id) {
+                     return GestureDetector(
+                       onTap: () => state.cycleRoundVerifier(row, id),
+                       child: _buildCompactVerifier(state.roundVerifiers[row][id] ?? 0),
+                     );
+                  }).toList(),
+                )),
               ],
             ),
           );
@@ -114,8 +142,8 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildCompactSelector(BuildContext context, int? value, Function(int?) onChanged, Color color) {
     return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 0),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(4),
@@ -125,8 +153,8 @@ class HomeScreen extends StatelessWidget {
         child: DropdownButton<int>(
           value: value,
           isExpanded: true,
-          iconSize: 16,
-          style: const TextStyle(fontSize: 14, color: Colors.black),
+          iconSize: 14,
+          style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.bold),
           items: [1, 2, 3, 4, 5].map((e) => DropdownMenuItem(
             value: e,
             child: Center(child: Text(e.toString())),
@@ -137,19 +165,36 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVerifiers(BuildContext context) {
-    final state = context.watch<GameState>();
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: ['A', 'B', 'C', 'D', 'E', 'F'].map((id) {
-        return VerifierInput(
-          id: id,
-          state: state.verifierStates[id] ?? 0,
-          onTap: () => state.cycleVerifier(id),
-        );
-      }).toList(),
+  Widget _buildCompactVerifier(int state) {
+     Color bgColor = Colors.grey[200]!;
+    IconData? icon;
+    Color iconColor = Colors.transparent;
+
+    if (state == 1) {
+      bgColor = Colors.red[100]!;
+      icon = Icons.close;
+      iconColor = Colors.red;
+    } else if (state == 2) {
+      bgColor = Colors.green[100]!;
+      icon = Icons.check;
+      iconColor = Colors.green;
+    }
+
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: bgColor,
+        border: Border.all(color: Colors.grey.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: icon != null 
+        ? Icon(icon, color: iconColor, size: 20)
+        : null,
     );
   }
+
+
 
   Widget _buildGrid(BuildContext context) {
     final state = context.watch<GameState>();
