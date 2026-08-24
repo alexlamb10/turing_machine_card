@@ -358,7 +358,7 @@ class HomeScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Game Finished'),
-        content: const Text('Did you beat the machine?'),
+        content: const Text('Did you win?'),
         actions: [
           TextButton(
             onPressed: () {
@@ -372,14 +372,46 @@ class HomeScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              // Win
+              // Close first dialog and show the second one
+              Navigator.pop(ctx);
+              _showBeatMachineDialog(context, state);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Yes (Win!)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBeatMachineDialog(BuildContext context, GameState state) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Congratulations!'),
+        content: const Text('Did you beat the machine?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              // Win, but didn't beat machine
               context.read<StatsState>().addWin();
               state.reset();
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Yes (Win!)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('No', style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Win and beat machine
+              context.read<StatsState>().addWin();
+              context.read<StatsState>().addMachineBeat();
+              state.reset();
+              Navigator.pop(ctx);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            child: const Text('Yes!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

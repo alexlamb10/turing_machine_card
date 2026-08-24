@@ -22,7 +22,7 @@ class GameState extends ChangeNotifier {
     if (_grid[col][number - 1] == CellState.unknown) {
       _grid[col][number - 1] = CellState.crossed;
     } else if (_grid[col][number - 1] == CellState.crossed) {
-      _grid[col][number - 1] = CellState.unknown;
+      _grid[col][number - 1] = CellState.circled;
     } else {
       // If it was circled, uncircle it to unknown
       _grid[col][number - 1] = CellState.unknown; 

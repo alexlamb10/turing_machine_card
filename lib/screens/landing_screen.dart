@@ -26,12 +26,14 @@ class LandingScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 48),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 16,
+                  runSpacing: 16,
                   children: [
                     _buildStatCard('Wins', stats.wins, Colors.green),
-                    const SizedBox(width: 24),
                     _buildStatCard('Losses', stats.losses, Colors.red),
+                    _buildStatCard('Beat Machine', stats.machineBeats, Colors.blue),
                   ],
                 ),
                 const SizedBox(height: 48),
