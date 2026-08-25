@@ -78,6 +78,11 @@ class StatsState extends ChangeNotifier {
             playedAt: DateTime.parse(row['played_at']),
           );
         }).toList();
+
+        // Calculate totals dynamically from database records
+        _wins = _history.where((r) => r.outcome == 'win' || r.outcome == 'beat_machine').length;
+        _losses = _history.where((r) => r.outcome == 'loss').length;
+        _machineBeats = _history.where((r) => r.outcome == 'beat_machine').length;
       }
     } catch (_) {
       // Fallback to local storage if offline or request fails
