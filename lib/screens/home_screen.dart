@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import '../models/game_state.dart';
 import '../models/stats_state.dart';
 import '../widgets/grid_cell.dart';
-import '../widgets/verifier_input.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final String puzzleHash;
+  const HomeScreen({super.key, this.puzzleHash = 'Unknown'});
 
   @override
   Widget build(BuildContext context) {
@@ -363,7 +363,7 @@ class HomeScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               // Loss
-              context.read<StatsState>().addLoss();
+              context.read<StatsState>().addLoss(puzzleHash: puzzleHash);
               state.reset();
               Navigator.pop(ctx); // Close dialog
               Navigator.pop(context); // Go back to Landing
@@ -394,7 +394,7 @@ class HomeScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               // Win, but didn't beat machine
-              context.read<StatsState>().addWin();
+              context.read<StatsState>().addWin(puzzleHash: puzzleHash);
               state.reset();
               Navigator.pop(ctx);
               Navigator.pop(context);
@@ -403,9 +403,8 @@ class HomeScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              // Win and beat machine
-              context.read<StatsState>().addWin();
-              context.read<StatsState>().addMachineBeat();
+              // Win and beat machine (addMachineBeat increments both wins & machineBeats and logs single 'beat_machine' record)
+              context.read<StatsState>().addMachineBeat(puzzleHash: puzzleHash);
               state.reset();
               Navigator.pop(ctx);
               Navigator.pop(context);
