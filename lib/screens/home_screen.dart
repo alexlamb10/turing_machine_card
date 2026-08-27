@@ -4,13 +4,61 @@ import '../models/game_state.dart';
 import '../models/stats_state.dart';
 import '../widgets/grid_cell.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final String puzzleHash;
   const HomeScreen({super.key, this.puzzleHash = 'Unknown'});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool _allowPop = false;
+  bool _isConfirmingLeave = false;
+
+  Future<void> _requestLeave() async {
+    if (_isConfirmingLeave) return;
+    _isConfirmingLeave = true;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Are you sure?'),
+        content: const Text('If you go back, your current marks and notes will be lost.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Go back', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    _isConfirmingLeave = false;
+    if (confirmed == true && mounted) {
+      context.read<GameState>().reset();
+      _popToLanding();
+    }
+  }
+
+  void _popToLanding() {
+    setState(() => _allowPop = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: _allowPop,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _requestLeave();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Turing Machine Note Card'),
         actions: [
@@ -89,6 +137,7 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -363,10 +412,10 @@ class HomeScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               // Loss
-              context.read<StatsState>().addLoss(puzzleHash: puzzleHash);
+              context.read<StatsState>().addLoss(puzzleHash: widget.puzzleHash);
               state.reset();
               Navigator.pop(ctx); // Close dialog
-              Navigator.pop(context); // Go back to Landing
+              _popToLanding();
             },
             child: const Text('No (Loss)', style: TextStyle(color: Colors.red)),
           ),
@@ -394,20 +443,20 @@ class HomeScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               // Win, but didn't beat machine
-              context.read<StatsState>().addWin(puzzleHash: puzzleHash);
+              context.read<StatsState>().addWin(puzzleHash: widget.puzzleHash);
               state.reset();
               Navigator.pop(ctx);
-              Navigator.pop(context);
+              _popToLanding();
             },
             child: const Text('No', style: TextStyle(color: Colors.red)),
           ),
           ElevatedButton(
             onPressed: () {
               // Win and beat machine (addMachineBeat increments both wins & machineBeats and logs single 'beat_machine' record)
-              context.read<StatsState>().addMachineBeat(puzzleHash: puzzleHash);
+              context.read<StatsState>().addMachineBeat(puzzleHash: widget.puzzleHash);
               state.reset();
               Navigator.pop(ctx);
-              Navigator.pop(context);
+              _popToLanding();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
             child: const Text('Yes!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
