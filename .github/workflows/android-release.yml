@@ -80,7 +80,7 @@ jobs:
           # Calculate an incrementing build number with an offset of 100 to prevent conflicts with old version codes
           BUILD_NUMBER=$(( ${{ github.run_number }} + 100 ))
           echo "Building with Version Code (Build Number): $BUILD_NUMBER"
-          flutter build appbundle --release --build-number=$BUILD_NUMBER --build-name="1.0.$BUILD_NUMBER"
+          flutter build appbundle --release --build-number=$BUILD_NUMBER --build-name="1.0.$BUILD_NUMBER" --dart-define=dart.library.io.force_staggered_ipv6_lookup=true
 
 
       - name: Upload to Google Play Console
