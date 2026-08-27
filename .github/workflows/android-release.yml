@@ -47,7 +47,7 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
+          python3 -c "import base64, os; open('android/app/release.keystore', 'wb').write(base64.b64decode(os.environ['ANDROID_KEYSTORE_BASE64']))"
 
       - name: Create key.properties
         env:
