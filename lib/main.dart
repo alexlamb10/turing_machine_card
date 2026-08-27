@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,9 +7,36 @@ import 'models/stats_state.dart';
 import 'screens/landing_screen.dart';
 import 'screens/login_screen.dart';
 
+/// Forces all dart:io-based HTTP clients (including the one Supabase's
+/// auth client uses under the hood) to resolve and connect using IPv4
+/// only. Works around a known Dart SDK bug where IPv4/IPv6 connection
+/// attempts aren't interleaved properly, which can cause
+/// "Failed host lookup" errors on some networks/devices.
+class IPv4OnlyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    final client = super.createHttpClient(context);
+    client.connectionFactory =
+        (Uri uri, String? proxyHost, int? proxyPort) async {
+      final addresses = await InternetAddress.lookup(
+        uri.host,
+        type: InternetAddressType.IPv4,
+      );
+      if (addresses.isEmpty) {
+        throw SocketException('No IPv4 address found for ${uri.host}');
+      }
+      return Socket.startConnect(addresses.first, uri.port);
+    };
+    return client;
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Must be set before any HTTP clients (including Supabase's) are created.
+  HttpOverrides.global = IPv4OnlyHttpOverrides();
+
   await Supabase.initialize(
     url: 'https://bzkzoezlbiifrubsopzf.supabase.co',
     anonKey: 'sb_publishable_1joQL1iUOiS7bfJqxwsTMA_X3_DAOWG',
