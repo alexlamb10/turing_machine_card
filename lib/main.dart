@@ -37,13 +37,13 @@ class IPv4OnlyHttpOverrides extends HttpOverrides {
           context: context,
         );
         return ConnectionTask.fromSocket(
-          secureSocket,
+          Future.value(secureSocket),
           () => secureSocket.destroy(),
         );
       }
 
       return ConnectionTask.fromSocket(
-        rawSocket,
+        Future.value(rawSocket),
         () => rawSocket.destroy(),
       );
     };
