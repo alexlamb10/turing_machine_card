@@ -149,4 +149,33 @@ class StatsState extends ChangeNotifier {
     await _addRecord(puzzleHash, 'beat_machine');
     notifyListeners();
   }
+
+  Future<void> deleteRecord(String recordId) async {
+    _history.removeWhere((r) => r.id == recordId);
+
+    final prefs = await SharedPreferences.getInstance();
+    final rawList = _history.map((e) => jsonEncode(e.toJson())).toList();
+    await prefs.setStringList('history', rawList);
+
+    // Recalculate totals dynamically
+    _wins = _history.where((r) => r.outcome == 'win' || r.outcome == 'beat_machine').length;
+    _losses = _history.where((r) => r.outcome == 'loss').length;
+    _machineBeats = _history.where((r) => r.outcome == 'beat_machine').length;
+
+    await prefs.setInt('wins', _wins);
+    await prefs.setInt('losses', _losses);
+    await prefs.setInt('machineBeats', _machineBeats);
+
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user != null) {
+        await client.from('games').delete().eq('id', recordId);
+      }
+    } catch (_) {
+      // Ignored if offline
+    }
+
+    notifyListeners();
+  }
 }
