@@ -101,7 +101,13 @@ class _AuthGateState extends State<AuthGate> {
   @override
   Widget build(BuildContext context) {
     if (_isGuest) {
-      return const LandingScreen();
+      return LandingScreen(
+        onSignOut: () {
+          setState(() {
+            _isGuest = false;
+          });
+        },
+      );
     }
 
     return StreamBuilder<AuthState>(
@@ -112,7 +118,13 @@ class _AuthGateState extends State<AuthGate> {
         }
         final session = snapshot.data?.session;
         if (session != null) {
-          return const LandingScreen();
+          return LandingScreen(
+            onSignOut: () {
+              setState(() {
+                _isGuest = false;
+              });
+            },
+          );
         }
         return LoginScreen(
           onContinueAsGuest: () {

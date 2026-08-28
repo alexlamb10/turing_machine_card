@@ -61,6 +61,10 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Scaffold(
       appBar: AppBar(
         title: const Text('Turing Machine Note Card'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => _requestLeave(),
+        ),
         actions: [
           TextButton(
             onPressed: () => _showFinishedDialog(context, context.read<GameState>()),

@@ -6,7 +6,8 @@ import 'home_screen.dart';
 import 'history_screen.dart';
 
 class LandingScreen extends StatelessWidget {
-  const LandingScreen({super.key});
+  final VoidCallback? onSignOut;
+  const LandingScreen({super.key, this.onSignOut});
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +32,7 @@ class LandingScreen extends StatelessWidget {
               try {
                 await Supabase.instance.client.auth.signOut();
               } catch (_) {}
+              onSignOut?.call();
             },
           ),
         ],
