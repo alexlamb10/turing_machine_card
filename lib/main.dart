@@ -9,9 +9,11 @@ import 'screens/login_screen.dart';
 
 /// Forces all dart:io-based HTTP clients (including the one Supabase's
 /// auth client uses under the hood) to resolve and connect using IPv4
-/// only. Works around a known Dart SDK bug where IPv4/IPv6 connection
-/// attempts aren't interleaved properly, which can cause
-/// "Failed host lookup" errors on some networks/devices.
+/// only, working around a known Dart SDK bug with IPv4/IPv6 connection
+/// handling. Since overriding `connectionFactory` bypasses HttpClient's
+/// automatic TLS handling, we perform the TLS handshake explicitly for
+/// https:// requests via SecureSocket.secure, using the original
+/// hostname for proper SNI/certificate validation.
 class IPv4OnlyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
@@ -25,7 +27,25 @@ class IPv4OnlyHttpOverrides extends HttpOverrides {
       if (addresses.isEmpty) {
         throw SocketException('No IPv4 address found for ${uri.host}');
       }
-      return Socket.startConnect(addresses.first, uri.port);
+
+      final rawSocket = await Socket.connect(addresses.first, uri.port);
+
+      if (uri.scheme == 'https') {
+        final secureSocket = await SecureSocket.secure(
+          rawSocket,
+          host: uri.host, // preserves correct hostname for SNI/cert checks
+          context: context,
+        );
+        return ConnectionTask.fromSocket(
+          secureSocket,
+          () => secureSocket.destroy(),
+        );
+      }
+
+      return ConnectionTask.fromSocket(
+        rawSocket,
+        () => rawSocket.destroy(),
+      );
     };
     return client;
   }
