@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -16,7 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
+  
   final supabase = Supabase.instance.client;
 
   @override
@@ -52,60 +50,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         setState(() { _isLoading = false; });
       }
-    }
-  }
-
-  // TEMPORARY DEBUG HELPER — remove once the auth issue is diagnosed.
-  // Makes a raw HTTP request to the same auth endpoint Supabase's SDK
-  // hits, and shows the full status code + response body in a dialog,
-  // so we can see the raw HTML/error page without needing adb/logcat
-  // access on a remote tester's device.
-  Future<void> _debugRawRequest() async {
-    final client = HttpClient();
-    String title;
-    String body;
-    try {
-      final request = await client.postUrl(
-        Uri.parse('https://bzkzoezlbiifrubsopzf.supabase.co/auth/v1/signup'),
-      );
-      request.headers.set(
-        'apikey',
-        'sb_publishable_1joQL1iUOiS7bfJqxwsTMA_X3_DAOWG',
-      );
-      request.headers.set('Content-Type', 'application/json');
-      request.add(utf8.encode(jsonEncode({
-        'email': 'debug-check-${DateTime.now().millisecondsSinceEpoch}@example.com',
-        'password': 'debugPassword123!',
-      })));
-      final response = await request.close();
-      final responseBody = await response.transform(utf8.decoder).join();
-      title = 'Status: ${response.statusCode}';
-      body = responseBody.length > 4000
-          ? '${responseBody.substring(0, 4000)}\n\n...[truncated]'
-          : responseBody;
-    } catch (e) {
-      title = 'Request failed';
-      body = e.toString();
-    } finally {
-      client.close();
-    }
-
-    if (mounted) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text(title),
-          content: SingleChildScrollView(
-            child: SelectableText(body),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
     }
   }
 
@@ -162,15 +106,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: widget.onContinueAsGuest,
                 icon: const Icon(Icons.person_outline),
                 label: const Text('Continue as Guest'),
-              ),
-              const SizedBox(height: 24),
-              // TEMPORARY — remove after debugging
-              TextButton(
-                onPressed: _debugRawRequest,
-                child: const Text(
-                  'Debug: Check Raw Response',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
               ),
             ],
           ),
