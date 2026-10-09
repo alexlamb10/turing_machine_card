@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/challenge_state.dart';
+import '../models/notification_state.dart';
 import '../widgets/challenge_comparison_dialog.dart';
 import '../widgets/friends_dialog.dart';
 import 'home_screen.dart';
@@ -79,7 +80,7 @@ class ChallengesScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: () => state.addMockIncomingChallenge(),
+                onPressed: () => state.addMockIncomingChallenge(notificationState: context.read<NotificationState>()),
                 icon: const Icon(Icons.add_task),
                 label: const Text('Add Demo Challenge'),
                 style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),

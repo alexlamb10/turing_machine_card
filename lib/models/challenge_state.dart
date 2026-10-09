@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'friend.dart';
 import 'challenge.dart';
+import 'notification_state.dart';
 
 class ChallengeState extends ChangeNotifier {
   UserProfile _currentUser = UserProfile(id: '', publicId: '', displayName: 'Player');
@@ -223,7 +224,7 @@ class ChallengeState extends ChangeNotifier {
     return true;
   }
 
-  Future<void> acceptFriendRequest(FriendRequest req) async {
+  Future<void> acceptFriendRequest(FriendRequest req, {NotificationState? notificationState}) async {
     final newFriendship = Friendship(
       id: 'fr_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999)}',
       userId: _currentUser.id,
@@ -252,6 +253,7 @@ class ChallengeState extends ChangeNotifier {
       }
     } catch (_) {}
 
+    notificationState?.notifyFriendRequestAccepted(friendName: req.fromUserName);
     notifyListeners();
   }
 
@@ -333,6 +335,7 @@ class ChallengeState extends ChangeNotifier {
     required bool beatMachine,
     required int clues,
     required int rounds,
+    NotificationState? notificationState,
   }) async {
     final index = _challenges.indexWhere((c) => c.id == challengeId);
     if (index == -1) {
@@ -382,12 +385,18 @@ class ChallengeState extends ChangeNotifier {
       }
     } catch (_) {}
 
+    notificationState?.notifyChallengeCompleted(
+      challengeeName: _currentUser.displayName,
+      puzzleHash: orig.puzzleHash,
+      challengeId: challengeId,
+    );
+
     notifyListeners();
     return updated;
   }
 
-  /// Helper to create a sample/mock incoming challenge for testing if no friends exist
-  Future<void> addMockIncomingChallenge() async {
+  /// Helper to create a sample/mock incoming challenge for testing
+  Future<void> addMockIncomingChallenge({NotificationState? notificationState}) async {
     final mockFriend = Friendship(
       id: 'fr_mock',
       userId: _currentUser.id,
@@ -418,6 +427,39 @@ class ChallengeState extends ChangeNotifier {
 
     _challenges.add(mockChallenge);
     await _saveToLocal();
+
+    notificationState?.notifyNewChallengeReceived(
+      challengerName: mockFriend.friendName,
+      puzzleHash: '#42',
+      challengeId: mockChallenge.id,
+    );
+
+    notifyListeners();
+  }
+
+  /// Helper to create a sample/mock incoming friend request for testing
+  Future<void> addMockIncomingFriendRequest({NotificationState? notificationState}) async {
+    final mockReq = FriendRequest(
+      id: 'req_mock_${DateTime.now().millisecondsSinceEpoch}',
+      fromUserId: 'usr_ada_lovelace',
+      fromPublicId: 'TM-BETA2',
+      fromUserName: 'Ada Lovelace',
+      toUserId: _currentUser.id,
+      toPublicId: _currentUser.publicId,
+      status: 'pending',
+      createdAt: DateTime.now(),
+    );
+
+    if (!_incomingRequests.any((r) => r.id == mockReq.id)) {
+      _incomingRequests.add(mockReq);
+    }
+    await _saveToLocal();
+
+    notificationState?.notifyFriendRequestReceived(
+      senderName: 'Ada Lovelace',
+      requestId: mockReq.id,
+    );
+
     notifyListeners();
   }
 

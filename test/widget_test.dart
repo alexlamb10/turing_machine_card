@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:turing_machine_card/models/game_state.dart';
 import 'package:turing_machine_card/models/stats_state.dart';
 import 'package:turing_machine_card/models/challenge_state.dart';
+import 'package:turing_machine_card/models/notification_state.dart';
 import 'package:turing_machine_card/screens/landing_screen.dart';
 
 void main() {
@@ -21,6 +22,7 @@ void main() {
           ChangeNotifierProvider(create: (_) => GameState()),
           ChangeNotifierProvider(create: (_) => StatsState()),
           ChangeNotifierProvider(create: (_) => ChallengeState()),
+          ChangeNotifierProvider(create: (_) => NotificationState()),
         ],
         child: const MaterialApp(
           home: LandingScreen(),

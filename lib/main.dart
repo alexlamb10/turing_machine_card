@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models/game_state.dart';
 import 'models/stats_state.dart';
 import 'models/challenge_state.dart';
+import 'models/notification_state.dart';
+import 'services/push_notification_service.dart';
 import 'screens/landing_screen.dart';
 import 'screens/login_screen.dart';
 
@@ -63,6 +65,10 @@ Future<void> main() async {
     anonKey: 'sb_publishable_1joQL1iUOiS7bfJqxwsTMA_X3_DAOWG',
   );
 
+  // Initialize Native Push Notification Service
+  await PushNotificationService.instance.initialize();
+  await PushNotificationService.instance.requestPermissions();
+
   runApp(const MyApp());
 }
 
@@ -76,6 +82,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GameState()),
         ChangeNotifierProvider(create: (_) => StatsState()),
         ChangeNotifierProvider(create: (_) => ChallengeState()),
+        ChangeNotifierProvider(create: (_) => NotificationState()),
       ],
       child: MaterialApp(
         title: 'Turing Machine Card',
