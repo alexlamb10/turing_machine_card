@@ -2,11 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/game_state.dart';
 import '../models/stats_state.dart';
+import '../models/challenge_state.dart';
 import '../widgets/grid_cell.dart';
+import '../widgets/send_challenge_dialog.dart';
+import '../widgets/challenge_comparison_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   final String puzzleHash;
-  const HomeScreen({super.key, this.puzzleHash = 'Unknown'});
+  final String? activeChallengeId;
+
+  const HomeScreen({
+    super.key,
+    this.puzzleHash = 'Unknown',
+    this.activeChallengeId,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -417,9 +426,8 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               // Loss
               context.read<StatsState>().addLoss(puzzleHash: widget.puzzleHash);
-              state.reset();
               Navigator.pop(ctx); // Close dialog
-              _popToLanding();
+              _handlePostGameChallenges(context, state, won: false, beatMachine: false);
             },
             child: const Text('No (Loss)', style: TextStyle(color: Colors.red)),
           ),
@@ -448,19 +456,17 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               // Win, but didn't beat machine
               context.read<StatsState>().addWin(puzzleHash: widget.puzzleHash);
-              state.reset();
               Navigator.pop(ctx);
-              _popToLanding();
+              _handlePostGameChallenges(context, state, won: true, beatMachine: false);
             },
             child: const Text('No', style: TextStyle(color: Colors.red)),
           ),
           ElevatedButton(
             onPressed: () {
-              // Win and beat machine (addMachineBeat increments both wins & machineBeats and logs single 'beat_machine' record)
+              // Win and beat machine
               context.read<StatsState>().addMachineBeat(puzzleHash: widget.puzzleHash);
-              state.reset();
               Navigator.pop(ctx);
-              _popToLanding();
+              _handlePostGameChallenges(context, state, won: true, beatMachine: true);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
             child: const Text('Yes!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -468,5 +474,88 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _handlePostGameChallenges(
+    BuildContext context,
+    GameState state, {
+    required bool won,
+    required bool beatMachine,
+  }) async {
+    final int clues = state.totalClues;
+    final int rounds = state.totalRounds;
+    state.reset();
+
+    if (!mounted) return;
+
+    if (widget.activeChallengeId != null) {
+      // Completed a challenge! Submit results and show comparison modal
+      try {
+        final completedChal = await context.read<ChallengeState>().completeChallenge(
+              challengeId: widget.activeChallengeId!,
+              won: won,
+              beatMachine: beatMachine,
+              clues: clues,
+              rounds: rounds,
+            );
+
+        if (mounted) {
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => ChallengeComparisonDialog(challenge: completedChal),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error updating challenge: $e')),
+          );
+        }
+      }
+      if (mounted) _popToLanding();
+    } else {
+      // Regular game: Ask if user wants to challenge a friend to this puzzle
+      final wantChallenge = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.emoji_events, color: Colors.amber),
+              SizedBox(width: 8),
+              Text('Challenge a Friend?'),
+            ],
+          ),
+          content: Text(
+            'Would you like to challenge another user to the same puzzle (${widget.puzzleHash})?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('No, Thanks'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
+              child: const Text('Challenge Friends', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+
+      if (wantChallenge == true && mounted) {
+        await showDialog(
+          context: context,
+          builder: (ctx) => SendChallengeDialog(
+            puzzleHash: widget.puzzleHash,
+            won: won,
+            beatMachine: beatMachine,
+            clues: clues,
+            rounds: rounds,
+          ),
+        );
+      }
+      if (mounted) _popToLanding();
+    }
   }
 }
