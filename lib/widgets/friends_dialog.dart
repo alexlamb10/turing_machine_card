@@ -19,6 +19,16 @@ class _FriendsDialogState extends State<FriendsDialog> {
   String? _successMessage;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<ChallengeState>().syncFromSupabase();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _idController.dispose();
     _nameController.dispose();

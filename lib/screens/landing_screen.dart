@@ -12,9 +12,29 @@ import 'home_screen.dart';
 import 'history_screen.dart';
 import 'challenges_screen.dart';
 
-class LandingScreen extends StatelessWidget {
+class LandingScreen extends StatefulWidget {
   final VoidCallback? onSignOut;
   const LandingScreen({super.key, this.onSignOut});
+
+  @override
+  State<LandingScreen> createState() => _LandingScreenState();
+}
+
+class _LandingScreenState extends State<LandingScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final challengeState = context.read<ChallengeState>();
+        final notifState = context.read<NotificationState>();
+        challengeState.syncFromSupabase();
+        if (challengeState.currentUser.id.isNotEmpty) {
+          notifState.setupRealtimeListeners(challengeState.currentUser.id);
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +145,7 @@ class LandingScreen extends StatelessWidget {
               try {
                 await Supabase.instance.client.auth.signOut();
               } catch (_) {}
-              onSignOut?.call();
+              widget.onSignOut?.call();
             },
           ),
         ],

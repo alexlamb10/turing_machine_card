@@ -53,7 +53,11 @@ class ChallengeState extends ChangeNotifier {
       await prefs.setString('public_id', publicId);
     }
 
-    String displayName = sbUser?.email?.split('@').first ?? prefs.getString('display_name') ?? 'Player_${publicId.substring(publicId.length - 4)}';
+    final savedDisplayName = prefs.getString('display_name');
+    String displayName = (savedDisplayName != null && savedDisplayName.isNotEmpty)
+        ? savedDisplayName
+        : (sbUser?.email != null && sbUser!.email!.isNotEmpty ? sbUser.email!.split('@').first : null) ??
+            'Player_${publicId.substring(publicId.length - 4)}';
 
     _currentUser = UserProfile(
       id: userId,
@@ -62,7 +66,8 @@ class ChallengeState extends ChangeNotifier {
     );
 
     await _loadFromLocal();
-    await _syncFromSupabase();
+    await syncFromSupabase();
+    setupRealtimeSubscription();
 
     _isLoading = false;
     notifyListeners();
@@ -76,24 +81,28 @@ class ChallengeState extends ChangeNotifier {
   }
 
   Future<void> updateDisplayName(String name) async {
-    if (name.trim().isEmpty) return;
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
     _currentUser = UserProfile(
       id: _currentUser.id,
       publicId: _currentUser.publicId,
-      displayName: name.trim(),
+      displayName: trimmed,
     );
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('display_name', _currentUser.displayName);
+    await prefs.setString('display_name', trimmed);
 
     try {
       final client = Supabase.instance.client;
       final user = client.auth.currentUser;
       if (user != null) {
         await client.from('profiles').upsert({
-          'id': _currentUser.id,
+          'id': user.id,
           'public_id': _currentUser.publicId,
-          'display_name': _currentUser.displayName,
+          'display_name': trimmed,
         });
+        await client.auth.updateUser(UserAttributes(
+          data: {'display_name': trimmed},
+        ));
       }
     } catch (_) {}
 
@@ -127,36 +136,142 @@ class ChallengeState extends ChangeNotifier {
     await prefs.setStringList('local_challenges', _challenges.map((e) => jsonEncode(e.toJson())).toList());
   }
 
-  Future<void> _syncFromSupabase() async {
+  RealtimeChannel? _realtimeChannel;
+
+  void setupRealtimeSubscription() {
     try {
       final client = Supabase.instance.client;
       final user = client.auth.currentUser;
       if (user == null) return;
 
-      // Sync Profile
-      await client.from('profiles').upsert({
-        'id': user.id,
-        'public_id': _currentUser.publicId,
-        'display_name': _currentUser.displayName,
-      });
+      _realtimeChannel?.unsubscribe();
+      _realtimeChannel = client.channel('public:user_updates_${user.id}')
+        ..onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'friend_requests',
+          callback: (_) => syncFromSupabase(),
+        )
+        ..onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'friendships',
+          callback: (_) => syncFromSupabase(),
+        )
+        ..onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'challenges',
+          callback: (_) => syncFromSupabase(),
+        )
+        ..subscribe();
+    } catch (_) {}
+  }
 
-      // Sync Friendships
-      final friendsRes = await client.from('friendships').select().or('user_id.eq.${user.id},friend_user_id.eq.${user.id}');
-      _friends = (friendsRes as List).map((row) {
-        final isUser = row['user_id'] == user.id;
-        return Friendship(
-          id: row['id'] ?? '',
-          userId: user.id,
-          friendUserId: isUser ? row['friend_user_id'] : row['user_id'],
-          friendPublicId: isUser ? (row['friend_public_id'] ?? '') : (row['user_public_id'] ?? ''),
-          friendName: isUser ? (row['friend_name'] ?? 'Friend') : (row['user_name'] ?? 'Friend'),
-          createdAt: DateTime.parse(row['created_at'] ?? DateTime.now().toIso8601String()),
-        );
-      }).toList();
+  Future<void> syncFromSupabase() async {
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user == null) return;
 
-      // Sync Challenges
-      final chalRes = await client.from('challenges').select().or('challenger_id.eq.${user.id},challengee_id.eq.${user.id}');
-      _challenges = (chalRes as List).map((row) => Challenge.fromJson(row)).toList();
+      final prefs = await SharedPreferences.getInstance();
+      final savedDisplayName = prefs.getString('display_name');
+
+      // 1. Sync Profile
+      try {
+        final profileRes = await client.from('profiles').select().eq('id', user.id).maybeSingle();
+        if (savedDisplayName != null && savedDisplayName.isNotEmpty) {
+          await client.from('profiles').upsert({
+            'id': user.id,
+            'public_id': _currentUser.publicId,
+            'display_name': savedDisplayName,
+          });
+          _currentUser = UserProfile(
+            id: user.id,
+            publicId: _currentUser.publicId,
+            displayName: savedDisplayName,
+          );
+        } else if (profileRes != null &&
+            profileRes['display_name'] != null &&
+            (profileRes['display_name'] as String).isNotEmpty) {
+          final remoteName = profileRes['display_name'] as String;
+          await prefs.setString('display_name', remoteName);
+          _currentUser = UserProfile(
+            id: user.id,
+            publicId: _currentUser.publicId,
+            displayName: remoteName,
+          );
+        } else {
+          await client.from('profiles').upsert({
+            'id': user.id,
+            'public_id': _currentUser.publicId,
+            'display_name': _currentUser.displayName,
+          });
+        }
+      } catch (e) {
+        if (kDebugMode) print("Error syncing profile: $e");
+      }
+
+      // 2. Sync Friend Requests (Incoming & Outgoing!)
+      try {
+        final incReqRes = await client
+            .from('friend_requests')
+            .select()
+            .or('to_user_id.eq.${user.id},to_public_id.eq.${_currentUser.publicId}');
+
+        final outReqRes = await client
+            .from('friend_requests')
+            .select()
+            .or('from_user_id.eq.${user.id},from_public_id.eq.${_currentUser.publicId}');
+
+        _incomingRequests = (incReqRes as List)
+            .map((row) => FriendRequest.fromJson(row))
+            .where((r) => r.status == 'pending')
+            .toList();
+
+        _outgoingRequests = (outReqRes as List)
+            .map((row) => FriendRequest.fromJson(row))
+            .toList();
+      } catch (e) {
+        if (kDebugMode) print("Error syncing friend requests: $e");
+      }
+
+      // 3. Sync Friendships
+      try {
+        final friendsRes = await client
+            .from('friendships')
+            .select()
+            .or('user_id.eq.${user.id},friend_user_id.eq.${user.id}');
+
+        _friends = (friendsRes as List).map((row) {
+          final isUser = row['user_id'] == user.id;
+          return Friendship(
+            id: row['id'] ?? '',
+            userId: user.id,
+            friendUserId: isUser ? row['friend_user_id'] : row['user_id'],
+            friendPublicId: isUser ? (row['friend_public_id'] ?? '') : (row['user_public_id'] ?? ''),
+            friendName: isUser ? (row['friend_name'] ?? 'Friend') : (row['user_name'] ?? 'Friend'),
+            createdAt: DateTime.parse(row['created_at'] ?? DateTime.now().toIso8601String()),
+          );
+        }).toList();
+      } catch (e) {
+        if (kDebugMode) print("Error syncing friendships: $e");
+      }
+
+      // 4. Sync Challenges
+      try {
+        final chalRes = await client
+            .from('challenges')
+            .select()
+            .or('challenger_id.eq.${user.id},challengee_id.eq.${user.id}');
+
+        _challenges = (chalRes as List).map((row) => Challenge.fromJson(row)).toList();
+      } catch (e) {
+        if (kDebugMode) print("Error syncing challenges: $e");
+      }
+
+      await _saveToLocal();
+      notifyListeners();
     } catch (_) {
       // Local mode fallback handles offline/failures
     }
@@ -166,24 +281,30 @@ class ChallengeState extends ChangeNotifier {
 
   Future<bool> sendFriendRequest(String targetPublicId) async {
     final cleanId = targetPublicId.trim().toUpperCase();
-    if (cleanId == _currentUser.publicId) {
+    if (cleanId == _currentUser.publicId.toUpperCase()) {
       throw Exception("You cannot send a friend request to yourself.");
     }
     if (_friends.any((f) => f.friendPublicId.toUpperCase() == cleanId)) {
       throw Exception("You are already friends with this user.");
     }
+    if (_outgoingRequests.any((r) => r.toPublicId.toUpperCase() == cleanId && r.status == 'pending')) {
+      throw Exception("You have already sent a friend request to this user.");
+    }
 
     final reqId = 'req_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999)}';
     String targetUserId = 'usr_remote_$cleanId';
-    String targetName = 'User_$cleanId';
 
     // Check online user profile if possible
     try {
       final client = Supabase.instance.client;
-      final profilesRes = await client.from('profiles').select().eq('public_id', cleanId).maybeSingle();
+      final profilesRes = await client
+          .from('profiles')
+          .select()
+          .ilike('public_id', cleanId)
+          .maybeSingle();
+
       if (profilesRes != null) {
-        targetUserId = profilesRes['id'];
-        targetName = profilesRes['display_name'] ?? targetName;
+        targetUserId = profilesRes['id'] ?? targetUserId;
       }
     } catch (_) {}
 
@@ -199,9 +320,6 @@ class ChallengeState extends ChangeNotifier {
     );
 
     _outgoingRequests.add(request);
-
-    // Auto-accept in local/guest mock mode if target is local or for testing
-    // Also save request
     await _saveToLocal();
 
     try {
@@ -218,7 +336,9 @@ class ChallengeState extends ChangeNotifier {
           'created_at': request.createdAt.toIso8601String(),
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) print("Error inserting friend request: $e");
+    }
 
     notifyListeners();
     return true;
@@ -244,6 +364,8 @@ class ChallengeState extends ChangeNotifier {
         await client.from('friendships').insert({
           'id': newFriendship.id,
           'user_id': _currentUser.id,
+          'user_public_id': _currentUser.publicId,
+          'user_name': _currentUser.displayName,
           'friend_user_id': req.fromUserId,
           'friend_public_id': req.fromPublicId,
           'friend_name': req.fromUserName,
