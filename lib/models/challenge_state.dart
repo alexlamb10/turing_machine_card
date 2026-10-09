@@ -464,8 +464,25 @@ class ChallengeState extends ChangeNotifier {
     required int rounds,
   }) async {
     final List<Challenge> created = [];
+    final client = Supabase.instance.client;
 
     for (final friend in targetFriends) {
+      String recipientUserId = friend.friendUserId;
+
+      // Look up target friend's real Supabase user ID if friendUserId was temporary
+      if (recipientUserId.startsWith('usr_remote_') || recipientUserId.isEmpty) {
+        try {
+          final profileRes = await client
+              .from('profiles')
+              .select()
+              .ilike('public_id', friend.friendPublicId)
+              .maybeSingle();
+          if (profileRes != null && profileRes['id'] != null) {
+            recipientUserId = profileRes['id'];
+          }
+        } catch (_) {}
+      }
+
       final challenge = Challenge(
         id: 'chal_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}',
         puzzleHash: puzzleHash.isEmpty ? 'Unknown' : puzzleHash,
@@ -475,7 +492,7 @@ class ChallengeState extends ChangeNotifier {
         challengerBeatMachine: beatMachine,
         challengerClues: clues,
         challengerRounds: rounds,
-        challengeeId: friend.friendUserId,
+        challengeeId: recipientUserId,
         challengeeName: friend.friendName,
         status: 'pending',
         createdAt: DateTime.now(),
@@ -485,11 +502,12 @@ class ChallengeState extends ChangeNotifier {
       created.add(challenge);
 
       try {
-        final client = Supabase.instance.client;
         if (client.auth.currentUser != null) {
-          await client.from('challenges').insert(challenge.toJson());
+          await client.from('challenges').insert(challenge.toDbJson());
         }
-      } catch (_) {}
+      } catch (e) {
+        if (kDebugMode) print("Error inserting challenge into Supabase: $e");
+      }
     }
 
     await _saveToLocal();
@@ -549,9 +567,11 @@ class ChallengeState extends ChangeNotifier {
     try {
       final client = Supabase.instance.client;
       if (client.auth.currentUser != null) {
-        await client.from('challenges').update(updated.toJson()).eq('id', challengeId);
+        await client.from('challenges').update(updated.toDbJson()).eq('id', challengeId);
       }
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) print("Error updating challenge in Supabase: $e");
+    }
 
     notificationState?.notifyChallengeCompleted(
       challengeeName: _currentUser.displayName,

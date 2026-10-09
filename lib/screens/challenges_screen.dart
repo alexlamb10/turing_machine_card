@@ -6,8 +6,23 @@ import '../widgets/challenge_comparison_dialog.dart';
 import '../widgets/friends_dialog.dart';
 import 'home_screen.dart';
 
-class ChallengesScreen extends StatelessWidget {
+class ChallengesScreen extends StatefulWidget {
   const ChallengesScreen({super.key});
+
+  @override
+  State<ChallengesScreen> createState() => _ChallengesScreenState();
+}
+
+class _ChallengesScreenState extends State<ChallengesScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<ChallengeState>().syncFromSupabase();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

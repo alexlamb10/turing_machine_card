@@ -62,6 +62,27 @@ class Challenge {
         'completedAt': completedAt?.toIso8601String(),
       };
 
+  Map<String, dynamic> toDbJson() => {
+        'id': id,
+        'puzzle_hash': puzzleHash,
+        'challenger_id': challengerId,
+        'challenger_name': challengerName,
+        'challenger_won': challengerWon,
+        'challenger_beat_machine': challengerBeatMachine,
+        'challenger_clues': challengerClues,
+        'challenger_rounds': challengerRounds,
+        'challengee_id': challengeeId,
+        'challengee_name': challengeeName,
+        'challengee_won': challengeeWon,
+        'challengee_beat_machine': challengeeBeatMachine,
+        'challengee_clues': challengeeClues,
+        'challengee_rounds': challengeeRounds,
+        'status': status,
+        'winner_id': winnerId,
+        'created_at': createdAt.toIso8601String(),
+        'completed_at': completedAt?.toIso8601String(),
+      };
+
   factory Challenge.fromJson(Map<String, dynamic> json) => Challenge(
         id: json['id'] ?? '',
         puzzleHash: json['puzzleHash'] ?? json['puzzle_hash'] ?? 'Unknown',
