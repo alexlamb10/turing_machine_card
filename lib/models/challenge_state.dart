@@ -284,64 +284,110 @@ class ChallengeState extends ChangeNotifier {
     if (cleanId == _currentUser.publicId.toUpperCase()) {
       throw Exception("You cannot send a friend request to yourself.");
     }
-    if (_friends.any((f) => f.friendPublicId.toUpperCase() == cleanId)) {
-      throw Exception("You are already friends with this user.");
-    }
-    if (_outgoingRequests.any((r) => r.toPublicId.toUpperCase() == cleanId && r.status == 'pending')) {
-      throw Exception("You have already sent a friend request to this user.");
-    }
 
-    final reqId = 'req_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999)}';
-    String targetUserId = 'usr_remote_$cleanId';
+    final client = Supabase.instance.client;
+    final user = client.auth.currentUser;
 
-    // Check online user profile if possible
-    try {
-      final client = Supabase.instance.client;
-      final profilesRes = await client
-          .from('profiles')
-          .select()
-          .ilike('public_id', cleanId)
-          .maybeSingle();
+    if (user != null) {
+      // 1. Check if user profile exists with target public ID
+      Map<String, dynamic>? profileRes;
+      try {
+        profileRes = await client
+            .from('profiles')
+            .select()
+            .ilike('public_id', cleanId)
+            .maybeSingle();
+      } catch (_) {}
 
-      if (profilesRes != null) {
-        targetUserId = profilesRes['id'] ?? targetUserId;
+      final String targetUserId = profileRes?['id'] ?? 'usr_remote_$cleanId';
+
+      // 2. Check if already friends in database
+      try {
+        final existingFriendship = await client
+            .from('friendships')
+            .select()
+            .or('user_id.eq.${user.id},friend_user_id.eq.${user.id}')
+            .maybeSingle();
+
+        if (existingFriendship != null) {
+          final isUser = existingFriendship['user_id'] == user.id;
+          final friendPublicId = (isUser ? existingFriendship['friend_public_id'] : existingFriendship['user_public_id'])?.toString().toUpperCase();
+          if (friendPublicId == cleanId) {
+            throw Exception("You are already friends with this user.");
+          }
+        }
+      } catch (e) {
+        if (e.toString().contains("already friends")) rethrow;
       }
-    } catch (_) {}
 
-    final request = FriendRequest(
-      id: reqId,
-      fromUserId: _currentUser.id,
-      fromPublicId: _currentUser.publicId,
-      fromUserName: _currentUser.displayName,
-      toUserId: targetUserId,
-      toPublicId: cleanId,
-      status: 'pending',
-      createdAt: DateTime.now(),
-    );
+      // 3. Check database to see if a pending friend request already exists
+      try {
+        final existingReq = await client
+            .from('friend_requests')
+            .select()
+            .or('from_user_id.eq.${user.id},from_public_id.ilike.${_currentUser.publicId}')
+            .eq('to_public_id', cleanId)
+            .eq('status', 'pending')
+            .maybeSingle();
 
-    _outgoingRequests.add(request);
-    await _saveToLocal();
-
-    try {
-      final client = Supabase.instance.client;
-      if (client.auth.currentUser != null) {
-        await client.from('friend_requests').insert({
-          'id': request.id,
-          'from_user_id': request.fromUserId,
-          'from_public_id': request.fromPublicId,
-          'from_user_name': request.fromUserName,
-          'to_user_id': request.toUserId,
-          'to_public_id': request.toPublicId,
-          'status': 'pending',
-          'created_at': request.createdAt.toIso8601String(),
-        });
+        if (existingReq != null) {
+          throw Exception("You have already sent a friend request to this user.");
+        }
+      } catch (e) {
+        if (e.toString().contains("already sent")) rethrow;
       }
-    } catch (e) {
-      if (kDebugMode) print("Error inserting friend request: $e");
-    }
 
-    notifyListeners();
-    return true;
+      final reqId = 'req_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999)}';
+      final request = FriendRequest(
+        id: reqId,
+        fromUserId: _currentUser.id,
+        fromPublicId: _currentUser.publicId,
+        fromUserName: _currentUser.displayName,
+        toUserId: targetUserId,
+        toPublicId: cleanId,
+        status: 'pending',
+        createdAt: DateTime.now(),
+      );
+
+      await client.from('friend_requests').insert({
+        'id': request.id,
+        'from_user_id': request.fromUserId,
+        'from_public_id': request.fromPublicId,
+        'from_user_name': request.fromUserName,
+        'to_user_id': request.toUserId,
+        'to_public_id': request.toPublicId,
+        'status': 'pending',
+        'created_at': request.createdAt.toIso8601String(),
+      });
+
+      _outgoingRequests.add(request);
+      await _saveToLocal();
+      notifyListeners();
+      return true;
+    } else {
+      // Guest mode fallback
+      if (_friends.any((f) => f.friendPublicId.toUpperCase() == cleanId)) {
+        throw Exception("You are already friends with this user.");
+      }
+      if (_outgoingRequests.any((r) => r.toPublicId.toUpperCase() == cleanId && r.status == 'pending')) {
+        throw Exception("You have already sent a friend request to this user.");
+      }
+      final reqId = 'req_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999)}';
+      final request = FriendRequest(
+        id: reqId,
+        fromUserId: _currentUser.id,
+        fromPublicId: _currentUser.publicId,
+        fromUserName: _currentUser.displayName,
+        toUserId: 'usr_remote_$cleanId',
+        toPublicId: cleanId,
+        status: 'pending',
+        createdAt: DateTime.now(),
+      );
+      _outgoingRequests.add(request);
+      await _saveToLocal();
+      notifyListeners();
+      return true;
+    }
   }
 
   Future<void> acceptFriendRequest(FriendRequest req, {NotificationState? notificationState}) async {
