@@ -92,6 +92,28 @@ class GameState extends ChangeNotifier {
 
   bool isVerifierDisabled(String id) => _disabledVerifiers.contains(id);
 
+  int get totalClues {
+    int count = 0;
+    for (var row in _roundVerifiers) {
+      for (var val in row.values) {
+        if (val != 0) count++;
+      }
+    }
+    return count;
+  }
+
+  int get totalRounds {
+    int maxRound = 0;
+    for (int r = 0; r < 9; r++) {
+      bool hasGuess = _guesses[r].any((g) => g != null);
+      bool hasVerifier = _roundVerifiers[r].values.any((v) => v != 0);
+      if (hasGuess || hasVerifier) {
+        maxRound = r + 1;
+      }
+    }
+    return maxRound == 0 ? 1 : maxRound;
+  }
+
   void toggleVerifierDisabled(String id) {
     if (_disabledVerifiers.contains(id)) {
       _disabledVerifiers.remove(id);
