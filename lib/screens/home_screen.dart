@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/game_state.dart';
 import '../models/stats_state.dart';
 import '../models/challenge_state.dart';
+import '../models/notification_state.dart';
 import '../widgets/grid_cell.dart';
 import '../widgets/send_challenge_dialog.dart';
 import '../widgets/challenge_comparison_dialog.dart';
@@ -497,6 +498,7 @@ class _HomeScreenState extends State<HomeScreen> {
               beatMachine: beatMachine,
               clues: clues,
               rounds: rounds,
+              notificationState: context.read<NotificationState>(),
             );
 
         if (mounted) {

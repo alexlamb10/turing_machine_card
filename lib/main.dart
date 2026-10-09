@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models/game_state.dart';
 import 'models/stats_state.dart';
 import 'models/challenge_state.dart';
+import 'models/notification_state.dart';
 import 'screens/landing_screen.dart';
 import 'screens/login_screen.dart';
 
@@ -76,6 +77,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GameState()),
         ChangeNotifierProvider(create: (_) => StatsState()),
         ChangeNotifierProvider(create: (_) => ChallengeState()),
+        ChangeNotifierProvider(create: (_) => NotificationState()),
       ],
       child: MaterialApp(
         title: 'Turing Machine Card',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/challenge_state.dart';
+import '../models/notification_state.dart';
 
 class FriendsDialog extends StatefulWidget {
   const FriendsDialog({super.key});
@@ -296,7 +297,7 @@ class _FriendsDialogState extends State<FriendsDialog> {
                                       const Text('No friends added yet.', style: TextStyle(color: Colors.grey)),
                                       const SizedBox(height: 8),
                                       OutlinedButton.icon(
-                                        onPressed: () => state.addMockIncomingChallenge(),
+                                        onPressed: () => state.addMockIncomingChallenge(notificationState: context.read<NotificationState>()),
                                         icon: const Icon(Icons.flash_on, size: 16),
                                         label: const Text('Add Demo Friend & Challenge'),
                                       ),
@@ -375,7 +376,7 @@ class _FriendsDialogState extends State<FriendsDialog> {
                                           IconButton(
                                             icon: const Icon(Icons.check_circle, color: Colors.green),
                                             tooltip: 'Accept',
-                                            onPressed: () => state.acceptFriendRequest(req),
+                                            onPressed: () => state.acceptFriendRequest(req, notificationState: context.read<NotificationState>()),
                                           ),
                                         ],
                                       ),

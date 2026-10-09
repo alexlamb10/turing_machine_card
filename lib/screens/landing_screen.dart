@@ -3,7 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/stats_state.dart';
 import '../models/challenge_state.dart';
+import '../models/notification_model.dart';
+import '../models/notification_state.dart';
 import '../widgets/friends_dialog.dart';
+import '../widgets/notification_banner.dart';
+import '../widgets/notifications_dialog.dart';
 import 'home_screen.dart';
 import 'history_screen.dart';
 import 'challenges_screen.dart';
@@ -15,11 +19,47 @@ class LandingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final challengeState = context.watch<ChallengeState>();
+    final notifState = context.watch<NotificationState>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Turing Machine Companion'),
         actions: [
+          // Notification Bell Button with Badge
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                tooltip: 'Notifications',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => const NotificationsDialog(),
+                  );
+                },
+              ),
+              if (notifState.unreadCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      '${notifState.unreadCount}',
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
           // Challenges Button with Badge
           Stack(
             alignment: Alignment.center,
@@ -41,7 +81,7 @@ class LandingScreen extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(
-                      color: Colors.red,
+                      color: Colors.orange,
                       shape: BoxShape.circle,
                     ),
                     constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
@@ -54,6 +94,7 @@ class LandingScreen extends StatelessWidget {
                 ),
             ],
           ),
+
           // Friends & Public ID Button
           IconButton(
             icon: const Icon(Icons.people),
@@ -89,131 +130,151 @@ class LandingScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Consumer<StatsState>(
-            builder: (context, stats, child) {
-              if (stats.isLoading) {
-                return const CircularProgressIndicator();
-              }
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.psychology, size: 80, color: Colors.blueGrey),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Turing Machine Companion',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  // Sharable ID subtitle
-                  GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => const FriendsDialog(),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.blueGrey.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.badge, size: 16, color: Colors.blueGrey),
-                          const SizedBox(width: 6),
-                          Text(
-                            'ID: ${challengeState.currentUser.publicId}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 13),
-                          ),
-                        ],
+      body: NotificationBanner(
+        onNotificationTap: (n) {
+          switch (n.type) {
+            case NotificationType.friendRequest:
+            case NotificationType.friendAccepted:
+              showDialog(
+                context: context,
+                builder: (ctx) => const FriendsDialog(),
+              );
+              break;
+            case NotificationType.newChallenge:
+            case NotificationType.challengeCompleted:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChallengesScreen()),
+              );
+              break;
+          }
+        },
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Consumer<StatsState>(
+              builder: (context, stats, child) {
+                if (stats.isLoading) {
+                  return const CircularProgressIndicator();
+                }
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.psychology, size: 80, color: Colors.blueGrey),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Turing Machine Companion',
+                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    // Sharable ID subtitle
+                    GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => const FriendsDialog(),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.badge, size: 16, color: Colors.blueGrey),
+                            const SizedBox(width: 6),
+                            Text(
+                              'ID: ${challengeState.currentUser.publicId}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 13),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 36),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 16,
-                    runSpacing: 16,
-                    children: [
-                      _buildStatCard('Wins', stats.wins, Colors.green),
-                      _buildStatCard('Losses', stats.losses, Colors.red),
-                      _buildStatCard('Beat Machine', stats.machineBeats, Colors.blue),
-                    ],
-                  ),
-                  const SizedBox(height: 40),
+                    const SizedBox(height: 36),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        _buildStatCard('Wins', stats.wins, Colors.green),
+                        _buildStatCard('Losses', stats.losses, Colors.red),
+                        _buildStatCard('Beat Machine', stats.machineBeats, Colors.blue),
+                      ],
+                    ),
+                    const SizedBox(height: 40),
 
-                  // Main Action Buttons
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () => _promptPuzzleHash(context, isChallenge: false),
-                        icon: const Icon(Icons.play_arrow),
-                        label: const Text('Start Research', style: TextStyle(fontSize: 16)),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                          backgroundColor: Colors.blueGrey,
-                          foregroundColor: Colors.white,
+                    // Main Action Buttons
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => _promptPuzzleHash(context, isChallenge: false),
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('Start Research', style: TextStyle(fontSize: 16)),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                            backgroundColor: Colors.blueGrey,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () => _promptPuzzleHash(context, isChallenge: true),
-                        icon: const Icon(Icons.emoji_events),
-                        label: const Text('Start Challenge', style: TextStyle(fontSize: 16)),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                          backgroundColor: Colors.amber[800],
-                          foregroundColor: Colors.white,
+                        ElevatedButton.icon(
+                          onPressed: () => _promptPuzzleHash(context, isChallenge: true),
+                          icon: const Icon(Icons.emoji_events),
+                          label: const Text('Start Challenge', style: TextStyle(fontSize: 16)),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                            backgroundColor: Colors.amber[800],
+                            foregroundColor: Colors.white,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
 
-                  // Sub Action Buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const ChallengesScreen()),
-                          );
-                        },
-                        icon: const Icon(Icons.flash_on),
-                        label: Text('Challenges (${challengeState.currentChallenges.length})'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    // Sub Action Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ChallengesScreen()),
+                            );
+                          },
+                          icon: const Icon(Icons.flash_on),
+                          label: Text('Challenges (${challengeState.currentChallenges.length})'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const HistoryScreen()),
-                          );
-                        },
-                        icon: const Icon(Icons.history),
-                        label: const Text('History'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                        const SizedBox(width: 12),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const HistoryScreen()),
+                            );
+                          },
+                          icon: const Icon(Icons.history),
+                          label: const Text('History'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
