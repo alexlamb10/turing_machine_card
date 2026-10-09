@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'notification_model.dart';
+import '../services/push_notification_service.dart';
 
 class NotificationState extends ChangeNotifier {
   List<AppNotification> _notifications = [];
@@ -81,6 +82,14 @@ class NotificationState extends ChangeNotifier {
     _notifications.insert(0, notification);
     _activeToast = notification;
     _saveToLocal();
+
+    PushNotificationService.instance.showNativeNotification(
+      id: notification.id.hashCode,
+      title: title,
+      body: message,
+      payload: relatedId,
+    );
+
     notifyListeners();
   }
 
